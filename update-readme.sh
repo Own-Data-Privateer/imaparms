@@ -13,7 +13,7 @@ for i in 0 1; do
     sed -n "/# What is/,/# Usage/ p" README.md
     echo
 
-    python3 -m hoardy_mail.__main__ --help --markdown | sed '
+    python3 -m hoardy_mail --help --markdown | sed '
 s/^\(#\+\) /#\1 /
 s/^\(#\+\) \(hoardy-mail[^[({]*\) [[({].*/\1 \2/
 '
