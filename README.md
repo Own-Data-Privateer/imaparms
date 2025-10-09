@@ -62,7 +62,7 @@
 `hoardy-mail` is a tool that can help you quickly fetch your email from remote IMAP servers to a local file system (150x faster and using 150x less disk writes than [fetchmail](https://www.fetchmail.info/)/[getmail](https://github.com/getmail6/getmail6)), programmatically change flags on messages on IMAP servers (e.g. mark all messages newer than a day old in some folder as unread), delete or expire old messages from IMAP servers, and do other similar things.
 It can also perform several of those operations using the same IMAP connection, sequentially, allowing for complex updates.
 
-More formally, `hoardy-mail` is a utility that can fetch and/or perform various batch operations on messages residing on specified IMAP servers.
+More formally, `hoardy-mail` is a KISS (Keep It Stupid Simple) utility that can fetch and/or perform various batch operations on messages residing on specified IMAP servers.
 I.e., the overall algorithms `hoardy-mail` implements looks like this:
 
 - for each given account on each given server:
@@ -78,7 +78,7 @@ I.e., the overall algorithms `hoardy-mail` implements looks like this:
   - go to the beginning;
 - end.
 
-In other words, [in comparison to other things](#alternatives), `hoardy-mail` is a powerful yet fairly simple (Keep It Stupid Simple, KISS) replacement for a combination of [fetchmail](https://www.fetchmail.info/)/[getmail](https://github.com/getmail6/getmail6) and [IMAPExpire](https://gitlab.com/mikecardwell/IMAPExpire), with some additional features, and written in pure Python.
+In other words, [in comparison to other things](#alternatives), `hoardy-mail` is a powerful yet fairly simple replacement for a combination of [fetchmail](https://www.fetchmail.info/)/[getmail](https://github.com/getmail6/getmail6) and [IMAPExpire](https://gitlab.com/mikecardwell/IMAPExpire), with some additional features, and written in pure Python.
 
 `hoardy-mail` was previously knows as `imaparms`.
 
@@ -86,9 +86,9 @@ In other words, [in comparison to other things](#alternatives), `hoardy-mail` is
 
 If you
 
-- fetch all your mail into a [Maildir](https://en.wikipedia.org/wiki/Maildir) with [fetchmail](https://www.fetchmail.info/), [getmail](https://github.com/getmail6/getmail6), or similar,
-- backup your index and tags/labels database with a generic file synchronization tool like [syncthing](https://syncthing.net/), [bup](https://bup.github.io/), [rsync](https://rsync.samba.org/), [git](https://git-scm.com/), or similar,
-- and then, eventually, delete the old backed up mail from the original server,
+- fetch all your mail into a [Maildir](https://en.wikipedia.org/wiki/Maildir) with [fetchmail](https://www.fetchmail.info/), [getmail](https://github.com/getmail6/getmail6), or similar;
+- backup your files with [syncthing](https://syncthing.net/), [bup](https://bup.github.io/), [rsync](https://rsync.samba.org/), [git](https://git-scm.com/), or similar;
+- and then, eventually, delete the old backed up mail from the IMAP server;
 
 then, effectively, you are using IMAP as a mail delivery protocol, not like a mail access protocol it was designed to be.
 
@@ -104,8 +104,6 @@ When `fetchmail` gets stuck or crashes it is entirely possible for `IMAPExpire` 
 (And replacing `fetchmail` with [getmail](https://github.com/getmail6/getmail6) will not help.)
 
 I used to patch `fetchmail` and `IMAPExpire` to help with this, but then I decided it would be simpler to just write my own thingy instead of trying to make `fetchmail` fetch mail at decent speeds and fix all the issues making it unsafe and inconvenient to run `IMAPExpire` immediately after `fetchmail` finishes fetching mail.
-
-After I implemented `--older-than-mtime-of`, `--older-than-timestamp-in`, etc (to automate the above in a very nice manner), `--maildir` (which tortures my SSD 150x times less than `fetchmail` does), `--every-add-random` (which improves my privacy quite a bit) options I can no longer go back.
 
 # Highlights
 
@@ -207,11 +205,11 @@ Which is to say, the main use case `hoardy-mail` is made for is as follows:
 - you fetch your mail to a local Maildir with `hoardy-mail fetch` subcommand (which does what `fetchmail --softbounce --invisible --norewrite --mda MDA` does but much faster), then
 - backup your Maildir with `syncthing`/`bup`/`rsync`/`git`/etc to make at least one other copy somewhere, and then,
 - after your backup succeeds, you do `mv ~/.last-mail-backup.new ~/.last-mail-backup` or some such,
-- you then run `hoardy-mail delete --older-than-mtime-of ~/.last-mail-backup --older-than 3` or some such to expire old already-fetched and backed up messages from the server (I prefer to expire messages `--older-than` some number of intervals between backups, just to be safe, but if you do backups directly after the `fetch`, or you like to live dangerously, you could delete old messages immediately),
+- you then run `hoardy-mail delete --older-than-mtime-of ~/.last-mail-backup --older-than 3` or some such to expire old already-fetched and backed up messages from the server (I prefer having `--older-than 3` there to prevent it from deleting messages newer than 3 days, just in case, but if you like to live dangerously, you could remove that part and delete all old messages immediately),
 - you can then do `hoardy-mail for-each` to run both `fetch` and `delete` on the same connection, and run the backup process asynchronously, and it will still work as expected,
 - when/if your account get cracked/hacked the attacker only gets your unfetched mail (+ configurable amount of yet to be removed messages), which is much better than them getting the whole last 20 years or whatever of your correspondence. (If your personal computer gets compromised enough, attackers will eventually get everything anyway, so deleting old mail from servers does not make things worse. But see some [more thoughts on this below](#stolen-anyway).)
 
-This section starts with simple example invocations of `hoardy-mail`, builds up to the above use case, and then shows how to do even more advanced things.
+The rest of this section starts with simple example invocations of `hoardy-mail`, builds up to the above use case, and then shows how to do even more advanced things.
 
 ## How to: backup all your mail from GMail, Yahoo, Hotmail, Yandex, etc
 
@@ -388,7 +386,7 @@ This way, if I need to fetch mail from one of the services immediately (e.g. for
 
 You can run `hoardy-mail fetch` with `--any-seen --unflagged` command line options instead of the implied `--unseen --any-flagged` options, which will make it use the `FLAGGED` IMAP flag instead of the `SEEN` IMAP flag to track state, allowing you to run it simultaneously with tools that use the `SEEN` flag, like `fetchmail`, `getmail`, or just another instance of `hoardy-mail` (using the other flag).
 
-I.e. you can use it to run two instances of `hoardy-mail` on two separate machines and only expire old mail from the server after it was successfully backed up onto both machines.
+I.e. you can use it to run two instances of `hoardy-mail` on two separate machines and only expire old mail from the server after it was successfully backed up by both.
 Or, if you are really paranoid, you can this feature to check files produced by `fetchmail` and `hoardy-mail fetch` against each other and then simply delete duplicated files.
 
 Running in parallel with `fetchmail` using `maildrop` MDA for both `fetchmail` and `hoardy-mail` can be implemented like this:
@@ -620,7 +618,7 @@ Also, `hoardy-mail` is a very nice fast mail fetcher, regardless of all of this.
 - allows all UNICODE characters except `\n` in passwords/passphrases (yes, including spaces, quotes, etc);
 - provides a bunch of options controlling message selection and uses `--seen` option by default for destructive actions, so you won't accidentally delete any messages you have not yet fetched even if your fetcher got stuck/crashed;
 - provides GMail-specific options;
-- is written in Python instead of Perl and requires nothing but the basic Python install, no third-party libraries needed;
+- is written in Python instead of Perl;
 - has other subcommands, not just `hoardy-mail delete`.
 
 ## [offlineimap](https://github.com/OfflineIMAP/offlineimap), [imapsync](https://github.com/imapsync/imapsync), and similar
